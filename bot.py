@@ -117,9 +117,11 @@ async def start_parse_handle(msg: types.Message):
     else:
         await msg.answer("Кажется, отправленная вами ссылка неверная")
 
+
 @dp.message_handler(lambda message: message.text, state=ParserStatesGroup.doing)
 async def doing_parse_handle(msg: types.Message):
     await msg.answer('Ждите, пока данные парсятся')
+
 
 @dp.message_handler(Text(equals='💼Спарсить аудиторию (10 руб.)', ignore_case=True))
 async def parse_handle(msg: types.Message):
