@@ -4,7 +4,6 @@ from multiprocessing import Process
 import logging
 import random
 
-
 from aiogram import Bot, Dispatcher, types, executor
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
@@ -41,7 +40,7 @@ database_adapter = DatabaseAdapter()
 # Объект адаптера Киви
 qiwi_pay = QiwiP2P(TOKEN_QIWI_API)
 
-tasks = []
+tasks_queue = asyncio.queues.Queue()
 
 
 class ParserStatesGroup(StatesGroup):
@@ -61,7 +60,8 @@ async def cmd_start(message: types.Message):
         if referrer_id != '':
             if referrer_id != str(message.from_user.id):
                 database_adapter.add_user(message.from_user.id, referrer_id)
-                await message.answer('Вы зарегистрировались по реферальной ссылке, давайте пополним и баланс и приступим к работе)')
+                await message.answer(
+                    'Вы зарегистрировались по реферальной ссылке, давайте пополним и баланс и приступим к работе)')
             else:
                 await message.answer('По своей ссылке регистрироваться нельзя')
                 database_adapter.add_user(message.from_user.id)
@@ -100,20 +100,24 @@ def define_link(link):
         return link[13:]
 
 
+async def handle_user_order(msg: types.Message):
+    try:
+        await msg.answer("Парсер запущен, пожалуйста, ожидайте...")
+        await ParserStatesGroup.next()
+        await start_parse(define_link(str(msg.text)), str(msg.from_user.id))
+        await bot.send_document(msg.from_user.id, open("channel_users_" + str(msg.from_user.id) + ".json", 'rb'))
+        await bot.send_document(msg.from_user.id, open("channel_full_users_" + str(msg.from_user.id) + ".json", 'rb'))
+        await ParserStatesGroup.next()
+    except Exception as e:
+        await msg.answer("Чата с данной ссылкой не существует")
+        await ParserStatesGroup.next()
+        print(e)
+
+
 @dp.message_handler(lambda message: message.text, state=ParserStatesGroup.buy)
 async def start_parse_handle(msg: types.Message):
     if validate_link(str(msg.text)):
-        try:
-            await msg.answer("Парсер запущен, пожалуйста, ожидайте...")
-            await ParserStatesGroup.next()
-            await start_parse(define_link(str(msg.text)), str(msg.from_user.id))
-            await bot.send_document(msg.from_user.id, open("channel_users_" + str(msg.from_user.id) + ".json", 'rb'))
-            await bot.send_document(msg.from_user.id, open("channel_full_users_" + str(msg.from_user.id) + ".json", 'rb'))
-            await ParserStatesGroup.next()
-        except Exception as e:
-            await msg.answer("Чата с данной ссылкой не существует")
-            await ParserStatesGroup.next()
-            print(e)
+        await tasks_queue.put(handle_user_order(msg))
     else:
         await msg.answer("Кажется, отправленная вами ссылка неверная")
 
@@ -231,5 +235,33 @@ async def check(callback: types.CallbackQuery):
         await bot.send_message(callback.from_user.id, 'Счет не найден!')
 
 
-if __name__ == "__main__":
+async def worker():
+    while True:
+        if tasks_queue.empty():
+            continue
+        task = await tasks_queue.get()
+        await task
+        tasks_queue.task_done()
+
+
+def run_in_parallel(*fns):
+    proc = []
+    for fn in fns:
+        p = Process(target=fn)
+        p.start()
+        proc.append(p)
+    for p in proc:
+        p.join()
+
+
+def bot_start():
     executor.start_polling(dp, skip_updates=True)
+
+
+def worker_start():
+    asyncio.run(worker())
+
+
+if __name__ == "__main__":
+    run_in_parallel(bot_start, worker_start)
+
