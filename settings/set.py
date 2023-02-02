@@ -1,4 +1,4 @@
-REFERAL_PERCENT = 0.35
-PARSING_COST = 10
-MINIMAL_TOP_UP = 10
-BILL_LIFETIME = 15 # minutes
+REFERAL_PERCENT = 0.35 # процент рефералки
+PARSING_COST = 10 # стоимость одного парсинга
+MINIMAL_TOP_UP = 10 # минимальная сумма пополнения
+BILL_LIFETIME = 15 # время действия счета пополнения (в минутах)

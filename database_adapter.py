@@ -71,6 +71,16 @@ class DatabaseAdapter:
         sql_req = "UPDATE `user` SET `ref_balance`=" + str(new_balance) + " WHERE user_id = " + str(user_id)
         self.cursor.execute(sql_req)
 
-if  __name__ == "__main__":
+    def set_language(self, user_id, language_id):
+        sql_req = "UPDATE `user` SET `language_id`=" + str(language_id) + " WHERE user_id = " + str(user_id)
+        self.cursor.execute(sql_req)
+
+    def get_language(self, user_id):
+        sql_req = "SELECT * FROM `user` WHERE `user_id` = %s"
+        self.cursor.execute(sql_req, user_id)
+        return self.cursor.fetchall()[0][6]
+
+
+if __name__ == "__main__":
     db = DatabaseAdapter()
-    db.set_ref_balance(977885116, 0)
+    print(db.get_language(977885116))

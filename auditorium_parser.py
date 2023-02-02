@@ -21,17 +21,17 @@ from telethon.tl.functions.messages import GetHistoryRequest
 
 class Parser:
 
-    def __init__(self):
+    def __init__(self, account_number):
         # Считываем учетные данные
         config = configparser.ConfigParser()
-        config.read("config_parser.ini")
+        config.read(f"account{account_number}.ini")
 
         # Присваиваем значения внутренним переменным
         self.api_id = config['Telegram']['api_id']
         self.api_hash = config['Telegram']['api_hash']
         self.username = config['Telegram']['username']
 
-        self.client = TelegramClient(self.username, self.api_id, self.api_hash)
+        self.client = TelegramClient(self.username, int(self.api_id), self.api_hash)
 
     # функция считывания имен из базы данных
     def read_name(self, path):
@@ -40,7 +40,9 @@ class Parser:
 
     # функция записи результата после парсинга
     def write_auditorium(self, users, file, gender):
+        file.write('\n')
         file.write(gender)
+        file.write('\n')
         file.write('\n')
         for user in users:
             json.dump(user, file, ensure_ascii=False)
@@ -107,12 +109,12 @@ class Parser:
                                                "phone": participant.phone,
                                                "is_bot": participant.bot})
 
-        with open('channel_users_' + id + '.json', 'w', encoding='utf8') as outfile:
+        with open('channel_users_' + id + '.txt', 'w', encoding='utf8') as outfile:
             self.write_auditorium(man_users, outfile, '__Мужчины__')
             self.write_auditorium(woman_users, outfile, '__Женщины__')
             self.write_auditorium(unknown_users, outfile, '__Не определено__')
 
-        with open('channel_full_users_' + id + '.json', 'w', encoding='utf8') as outfile:
+        with open('channel_full_users_' + id + '.txt', 'w', encoding='utf8') as outfile:
             self.write_auditorium(man_users_json, outfile, '__Мужчины__')
             self.write_auditorium(woman_users_json, outfile, '__Женщины__')
             self.write_auditorium(unknown_users_json, outfile, '__Не определено__')
